@@ -15,6 +15,7 @@ const { developmentChains } = require("../../helper-hardhat-config")
               player
 
           const PRICE = ethers.utils.parseEther("0.1")
+          const LESS_PRICE = ethers.utils.parseEther("0.01")
           const TOKEN_ID = 0
           const ZERO_ADDRESS = ethers.constants.AddressZero
 
@@ -75,6 +76,68 @@ const { developmentChains } = require("../../helper-hardhat-config")
                   )
                   assert.equal(listing.price.toString(), PRICE)
                   assert.equal(listing.seller.toString(), deployer.address)
+              })
+          })
+
+          describe("Buy Item", function () {
+              it("should fail if the item is not listed", async function () {
+                  const error = `NftMarkeplace__NotListed("${basicNftContract.address}", ${TOKEN_ID})`
+                  expect(
+                      nftMarketplacePlayer.buyItem(basicNftContract.address, TOKEN_ID, PRICE)
+                  ).to.be.revertedWith(error)
+              })
+
+              it("should fail if the price is less than the listed price", async function () {
+                  const error = `NftMarketplace__PriceNotMet("${basicNftContract.address}", ${TOKEN_ID}, ${PRICE})`
+
+                  console.log(error)
+
+                  await nftMarketplace.listItem(basicNftContract.address, TOKEN_ID, PRICE)
+
+                  //player tries to buy item by passing price less than the listed price - should fail
+                  expect(
+                      nftMarketplacePlayer.buyItem(basicNftContract.address, TOKEN_ID, {
+                          value: LESS_PRICE,
+                      })
+                  ).to.be.revertedWith(error)
+              })
+
+              it("should update the proceeds of seller once the item is bought", async function () {
+                  //seller(deployer) lists the item
+                  await nftMarketplace.listItem(basicNftContract.address, TOKEN_ID, PRICE)
+
+                  //player buys the item
+                  expect(
+                      await nftMarketplacePlayer.buyItem(basicNftContract.address, TOKEN_ID, {
+                          value: PRICE,
+                      })
+                  ).to.emit("ItemBought")
+
+                  //deployer is the seller here, so his proceeds must be equal to price once the player buys the item listed by deployer
+                  const proceeds = await nftMarketplace.getProceeds(deployer.address)
+                  assert.equal(proceeds.toString(), PRICE.toString())
+              })
+
+              it("should transfer nft to player and delete the listing from listings", async function () {
+                  //owner(deployer) lists the item
+                  await nftMarketplace.listItem(basicNftContract.address, TOKEN_ID, PRICE)
+
+                  //player buys the item
+                  expect(
+                      await nftMarketplacePlayer.buyItem(basicNftContract.address, TOKEN_ID, {
+                          value: PRICE,
+                      })
+                  ).to.emit("ItemBought")
+
+                  //check new owner - must be player
+                  const newOwner = await basicNft.ownerOf(TOKEN_ID)
+                  const listing = await nftMarketplace.getListing(
+                      basicNftContract.address,
+                      TOKEN_ID
+                  )
+                  assert.equal(newOwner, player.address)
+                  assert.equal(listing.price.toString(), "0")
+                  assert.equal(listing.seller.toString(), ZERO_ADDRESS)
               })
           })
       })
