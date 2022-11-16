@@ -16,6 +16,8 @@ const { developmentChains } = require("../../helper-hardhat-config")
 
           const PRICE = ethers.utils.parseEther("0.1")
           const LESS_PRICE = ethers.utils.parseEther("0.01")
+          const NEW_PRICE = ethers.utils.parseEther("0.5")
+
           const TOKEN_ID = 0
           const ZERO_ADDRESS = ethers.constants.AddressZero
 
@@ -89,9 +91,6 @@ const { developmentChains } = require("../../helper-hardhat-config")
 
               it("should fail if the price is less than the listed price", async function () {
                   const error = `NftMarketplace__PriceNotMet("${basicNftContract.address}", ${TOKEN_ID}, ${PRICE})`
-
-                  console.log(error)
-
                   await nftMarketplace.listItem(basicNftContract.address, TOKEN_ID, PRICE)
 
                   //player tries to buy item by passing price less than the listed price - should fail
@@ -105,39 +104,78 @@ const { developmentChains } = require("../../helper-hardhat-config")
               it("should update the proceeds of seller once the item is bought", async function () {
                   //seller(deployer) lists the item
                   await nftMarketplace.listItem(basicNftContract.address, TOKEN_ID, PRICE)
-
                   //player buys the item
                   expect(
                       await nftMarketplacePlayer.buyItem(basicNftContract.address, TOKEN_ID, {
                           value: PRICE,
                       })
                   ).to.emit("ItemBought")
-
                   //deployer is the seller here, so his proceeds must be equal to price once the player buys the item listed by deployer
                   const proceeds = await nftMarketplace.getProceeds(deployer.address)
+
                   assert.equal(proceeds.toString(), PRICE.toString())
               })
 
               it("should transfer nft to player and delete the listing from listings", async function () {
                   //owner(deployer) lists the item
                   await nftMarketplace.listItem(basicNftContract.address, TOKEN_ID, PRICE)
-
                   //player buys the item
                   expect(
                       await nftMarketplacePlayer.buyItem(basicNftContract.address, TOKEN_ID, {
                           value: PRICE,
                       })
                   ).to.emit("ItemBought")
-
                   //check new owner - must be player
                   const newOwner = await basicNft.ownerOf(TOKEN_ID)
                   const listing = await nftMarketplace.getListing(
                       basicNftContract.address,
                       TOKEN_ID
                   )
+
                   assert.equal(newOwner, player.address)
                   assert.equal(listing.price.toString(), "0")
                   assert.equal(listing.seller.toString(), ZERO_ADDRESS)
+              })
+          })
+
+          describe("updates listing", function () {
+              beforeEach(async function () {
+                  //deployer(owner) lists the item
+                  await nftMarketplace.listItem(basicNftContract.address, TOKEN_ID, PRICE)
+              })
+              it("should fail if the person tries to update the price is not the owner", async function () {
+                  const error = `NftMarkeplace__NotAnOwner("${basicNft.address}", ${TOKEN_ID})`
+                  await expect(
+                      //now player is trying to update the price-should revert
+                      nftMarketplacePlayer.udpateListing(
+                          basicNftContract.address,
+                          TOKEN_ID,
+                          NEW_PRICE
+                      )
+                  ).to.be.revertedWith(error)
+              })
+              it("should fail if the new price is 0", async function () {
+                  await expect(
+                      //now player is trying to update the price-should revert
+                      nftMarketplace.udpateListing(basicNftContract.address, TOKEN_ID, 0)
+                  ).to.be.revertedWith("NftMarkeplace__PriceMustBeAboveZero")
+              })
+
+              it("aaa should update the listings item with new price and emit event", async function () {
+                  expect(
+                      await nftMarketplace.udpateListing(
+                          basicNftContract.address,
+                          TOKEN_ID,
+                          NEW_PRICE
+                      )
+                  ).to.emit("ItemListed")
+
+                  const listing = await nftMarketplace.getListing(
+                      basicNftContract.address,
+                      TOKEN_ID
+                  )
+
+                  assert.equal(listing.price.toString(), NEW_PRICE.toString())
               })
           })
       })
