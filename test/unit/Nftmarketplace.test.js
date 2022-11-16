@@ -66,6 +66,16 @@ const { developmentChains } = require("../../helper-hardhat-config")
                   ).to.be.revertedWith("NftMarkeplace__NotApprovedForMarketplace")
               })
 
+              it("Should fail if tries to list the item which is already listed", async function () {
+                  await basicNft.approve(nftMarketplaceContract.address, TOKEN_ID)
+                  await nftMarketplace.listItem(basicNftContract.address, TOKEN_ID, PRICE)
+
+                  const error = `NftMarkeplace__AlreadyListed("${basicNftContract.address}", ${TOKEN_ID})`
+                  await expect(
+                      nftMarketplace.listItem(basicNftContract.address, TOKEN_ID, PRICE)
+                  ).to.be.revertedWith(error)
+              })
+
               it("should list item in markeplace and update listings, emits an event", async function () {
                   await basicNft.approve(nftMarketplaceContract.address, TOKEN_ID)
                   expect(
@@ -139,11 +149,16 @@ const { developmentChains } = require("../../helper-hardhat-config")
           })
 
           describe("updates listing", function () {
-              beforeEach(async function () {
-                  //deployer(owner) lists the item
-                  await nftMarketplace.listItem(basicNftContract.address, TOKEN_ID, PRICE)
+              it("should fail if the item is not listed", async function () {
+                  const error = `NftMarkeplace__NotListed("${basicNft.address}", ${TOKEN_ID})`
+                  await expect(
+                      //now player is trying to update the price-should revert
+                      nftMarketplace.udpateListing(basicNftContract.address, TOKEN_ID, NEW_PRICE)
+                  ).to.be.revertedWith(error)
               })
               it("should fail if the person tries to update the price is not the owner", async function () {
+                  await nftMarketplace.listItem(basicNftContract.address, TOKEN_ID, PRICE)
+
                   const error = `NftMarkeplace__NotAnOwner("${basicNft.address}", ${TOKEN_ID})`
                   await expect(
                       //now player is trying to update the price-should revert
@@ -155,13 +170,16 @@ const { developmentChains } = require("../../helper-hardhat-config")
                   ).to.be.revertedWith(error)
               })
               it("should fail if the new price is 0", async function () {
+                  await nftMarketplace.listItem(basicNftContract.address, TOKEN_ID, PRICE)
+
                   await expect(
                       //now player is trying to update the price-should revert
                       nftMarketplace.udpateListing(basicNftContract.address, TOKEN_ID, 0)
                   ).to.be.revertedWith("NftMarkeplace__PriceMustBeAboveZero")
               })
 
-              it("aaa should update the listings item with new price and emit event", async function () {
+              it("should update the listings item with new price and emit event", async function () {
+                  await nftMarketplace.listItem(basicNftContract.address, TOKEN_ID, PRICE)
                   expect(
                       await nftMarketplace.udpateListing(
                           basicNftContract.address,
