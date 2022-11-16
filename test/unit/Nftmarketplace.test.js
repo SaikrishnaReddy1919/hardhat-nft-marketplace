@@ -178,4 +178,38 @@ const { developmentChains } = require("../../helper-hardhat-config")
                   assert.equal(listing.price.toString(), NEW_PRICE.toString())
               })
           })
+          describe("withdrawProceeds", function () {
+              beforeEach(async function () {
+                  //deployer(owner) lists the item
+                  await nftMarketplace.listItem(basicNftContract.address, TOKEN_ID, PRICE)
+              })
+
+              it("should fail if there are no proceeds", async function () {
+                  await expect(nftMarketplace.withdrawProceeds()).to.be.revertedWith(
+                      "NftMarketplace__NoProceeds"
+                  )
+              })
+              it("should withdraw the proceeds and updates the s_proceeds", async function () {
+                  //player buys the item
+                  await nftMarketplacePlayer.buyItem(basicNftContract.address, TOKEN_ID, {
+                      value: PRICE,
+                  })
+
+                  /**
+                   * deployer proceeds + deployer balance before with must be equal to
+                   * deployer balance after withdraw + gas coase
+                   */
+                  const beforeProceedsBalance = await nftMarketplace.getProceeds(deployer.address)
+                  const beforeWithdrawDeployerBalance = await deployer.getBalance()
+                  const txResponse = await nftMarketplace.withdrawProceeds()
+                  const transactionReceipt = await txResponse.wait(1)
+                  const { gasUsed, effectiveGasPrice } = transactionReceipt
+                  const gasCost = gasUsed.mul(effectiveGasPrice)
+                  const afterWithdrawDeployerBalance = await deployer.getBalance()
+                  assert(
+                      beforeProceedsBalance.add(beforeWithdrawDeployerBalance).toString,
+                      afterWithdrawDeployerBalance.add(gasCost).toString
+                  )
+              })
+          })
       })
