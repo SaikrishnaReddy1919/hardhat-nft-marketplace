@@ -5,6 +5,9 @@ pragma solidity ^0.8.7;
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
+//                       //
+//      Custom Errors    //
+//                       //
 error NftMarkeplace__PriceMustBeAboveZero();
 error NftMarkeplace__NotApprovedForMarketplace();
 error NftMarkeplace__AlreadyListed(address nftAddress, uint256 tokenId);
@@ -19,6 +22,10 @@ contract NftMarketplace is ReentrancyGuard {
         uint256 price;
         address seller;
     }
+
+    //                       //
+    //        Events         //
+    //                       //
     event ItemListed(
         address indexed seller,
         address indexed nftAddress,
@@ -33,11 +40,17 @@ contract NftMarketplace is ReentrancyGuard {
     );
     event ItemCanceled(address indexed seller, address indexed nftAddress, uint256 tokenId);
 
+    //                       //
+    //     State Variables   //
+    //                       //
     //NFT contract address -> NFt TokenId -> Listing
     mapping(address => mapping(uint256 => Listing)) private s_listings;
     // seller address => amount earned
     mapping(address => uint256) private s_proceeds;
 
+    //                       //
+    //       Modifiers       //
+    //                       //
     modifier notListed(
         address nftAddress,
         uint256 tokenId,
@@ -69,6 +82,10 @@ contract NftMarketplace is ReentrancyGuard {
         }
         _;
     }
+
+    //                       //
+    //     Main Functions    //
+    //                       //
 
     /**
      * Two ways :
@@ -171,5 +188,21 @@ contract NftMarketplace is ReentrancyGuard {
         if (!sent) {
             revert NftMarketplace__TransferFailed();
         }
+    }
+
+    //                       //
+    //    Getter Functions   //
+    //                       //
+
+    function getListing(address nftAddress, uint256 tokenId)
+        external
+        view
+        returns (Listing memory)
+    {
+        return s_listings[nftAddress][tokenId];
+    }
+
+    function getProceeds(address seller) external view returns (uint256) {
+        return s_proceeds[seller];
     }
 }
