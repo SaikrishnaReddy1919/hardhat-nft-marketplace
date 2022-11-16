@@ -38,7 +38,7 @@ module.exports = {
     },
     namedAccounts: {
         deployer: {
-            default: 0,
+            default: 0, //i.e., -> await ethers.getContract("BasicNft") -> automatically connects to deployer
         },
         player: {
             default: 1,
