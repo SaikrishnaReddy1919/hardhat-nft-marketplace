@@ -169,13 +169,41 @@ const { developmentChains } = require("../../helper-hardhat-config")
                           NEW_PRICE
                       )
                   ).to.emit("ItemListed")
-
                   const listing = await nftMarketplace.getListing(
                       basicNftContract.address,
                       TOKEN_ID
                   )
 
                   assert.equal(listing.price.toString(), NEW_PRICE.toString())
+              })
+          })
+
+          describe("ccc cancel listing", function () {
+              beforeEach(async function () {
+                  //deployer(owner) lists the item
+                  await nftMarketplace.listItem(basicNftContract.address, TOKEN_ID, PRICE)
+              })
+              it("should fail if other person(not owner) is trying to cancel the listing", async function () {
+                  it("should fail if the person tries to update the price is not the owner", async function () {
+                      const error = `NftMarkeplace__NotAnOwner("${basicNft.address}", ${TOKEN_ID})`
+                      await expect(
+                          //now player is trying to update the price-should revert
+                          nftMarketplacePlayer.cancelListing(basicNftContract.address, TOKEN_ID)
+                      ).to.be.revertedWith(error)
+                  })
+              })
+
+              it("should cancel the listing and emit event", async function () {
+                  expect(
+                      await nftMarketplace.cancelListing(basicNftContract.address, TOKEN_ID)
+                  ).to.emit("ItemCanceled")
+                  const listing = await nftMarketplace.getListing(
+                      basicNftContract.address,
+                      TOKEN_ID
+                  )
+
+                  assert.equal(listing.price.toString(), "0")
+                  assert.equal(listing.seller.toString(), ZERO_ADDRESS)
               })
           })
           describe("withdrawProceeds", function () {
