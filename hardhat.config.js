@@ -64,7 +64,7 @@ module.exports = {
         ],
     },
     gasReporter: {
-        enabled: false, // if false -> dont generate report for gas
+        enabled: true, // if false -> dont generate report for gas
         outputFile: "gas-report.txt",
         noColors: true,
         currency: "INR",
